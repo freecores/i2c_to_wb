@@ -18,7 +18,7 @@ module
   localparam tBUF     = 4700;
   localparam tSU_STA  = 4700;
   localparam tSU_DAT  = 250;
-  localparam tHD_DAT  = 0; 
+  localparam tHD_DAT  = 300; 
   localparam tHD_STA  = 4000; 
   localparam tLOW     = 4700; 
   localparam tHIGH    = 4000; 
@@ -55,8 +55,8 @@ module
       if( LOG_LEVEL > 2 )
         $display( "###- %m: I2C start at time %t. ", $time );
       
-      i2c_data_out  = 1'b1;
-      i2c_clk_out   = 1'b1;
+//       i2c_data_out  = 1'b1;
+//       i2c_clk_out   = 1'b1;
       
       #tBUF;
       
@@ -72,7 +72,7 @@ module
       if( i2c_clk != 1'b1 )
         begin
           i2c_clk_out = 1'b1;
-          #tSU_DAT;
+          #tLOW;
         end
         
       #tSU_STA;  
@@ -99,7 +99,7 @@ module
       if( i2c_clk != 1'b1 )
         begin
           i2c_clk_out = 1'b1;
-          #tSU_DAT;
+          #tLOW;
         end
       
       i2c_data_out  = 1'b1;
@@ -134,9 +134,13 @@ module
             
   // --------------------------------------------------------------------
   //  write_byte
+  reg write_byte_r = 1'b0;
+  
   task write_byte;
     input [7:0]  data;
       begin
+      
+        write_byte_r = 1'b1;
       
         if( LOG_LEVEL > 2 )
           $display( "###- %m: I2C write 0x%h at time %t. ", data, $time );
@@ -169,6 +173,10 @@ module
             $display( "###- %m: I2C ACK at time %t. ", $time );
             
         #tHIGH;
+        i2c_clk_out = 1'b0;
+        
+        write_byte_r = 1'b0;
+        #1;
                         
       end    
   endtask
@@ -224,6 +232,9 @@ module
         
         if( LOG_LEVEL > 2 )
           $display( "###- %m: I2C read 0x%h at time %t. ", i2c_buffer_in, $time );
+          
+        #tHIGH;
+        i2c_clk_out = 1'b0;
           
       end    
   endtask

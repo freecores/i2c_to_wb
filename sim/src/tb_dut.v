@@ -41,16 +41,16 @@ module tb_dut(
   wire i2c_clk_out;
   wire i2c_data_oe;
   wire i2c_clk_oe;
-  wire [31:0] wb_data_i;
+  wire [31:0] wb_data_i = 32'ha5a5a5a5;
   wire [31:0] wb_data_o;
   wire [31:0] wb_addr_o;
   wire [3:0] wb_sel_o;
   wire wb_we_o;
   wire wb_cyc_o;
   wire wb_stb_o;
-  wire wb_ack_i;
-  wire wb_err_i;
-  wire wb_rty_i;
+  wire wb_ack_i = 1'b1;
+  wire wb_err_i = 1'b0;
+  wire wb_rty_i = 1'b0;
   
   // tristate buffers
   assign i2c_data = i2c_data_oe ? i2c_data_out  : 1'bz;
@@ -64,6 +64,8 @@ module tb_dut(
       .i2c_clk_out(i2c_clk_out),
       .i2c_data_oe(i2c_data_oe),
       .i2c_clk_oe(i2c_clk_oe),
+      
+      .thd_dat(4'h8),
   
       .wb_data_i(wb_data_i),
       .wb_data_o(wb_data_o),
