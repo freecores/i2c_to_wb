@@ -1,6 +1,30 @@
-// --------------------------------------------------------------------
-//
-// --------------------------------------------------------------------
+//////////////////////////////////////////////////////////////////////
+////                                                              ////
+//// Copyright (C) 2009 Authors and OPENCORES.ORG                 ////
+////                                                              ////
+//// This source file may be used and distributed without         ////
+//// restriction provided that this copyright statement is not    ////
+//// removed from the file and that any derivative work contains  ////
+//// the original copyright notice and the associated disclaimer. ////
+////                                                              ////
+//// This source file is free software; you can redistribute it   ////
+//// and/or modify it under the terms of the GNU Lesser General   ////
+//// Public License as published by the Free Software Foundation; ////
+//// either version 2.1 of the License, or (at your option) any   ////
+//// later version.                                               ////
+////                                                              ////
+//// This source is distributed in the hope that it will be       ////
+//// useful, but WITHOUT ANY WARRANTY; without even the implied   ////
+//// warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR      ////
+//// PURPOSE.  See the GNU Lesser General Public License for more ////
+//// details.                                                     ////
+////                                                              ////
+//// You should have received a copy of the GNU Lesser General    ////
+//// Public License along with this source; if not, download it   ////
+//// from http://www.opencores.org/lgpl.shtml                     ////
+////                                                              ////
+//////////////////////////////////////////////////////////////////////
+
 
 `timescale 1ns/10ps
 
@@ -49,34 +73,40 @@ module
   
   // --------------------------------------------------------------------
   //  start
+  reg start_r = 1'b0;
+  
   task start; 
     begin
     
+      start_r = 1'b1;
+    
       if( LOG_LEVEL > 2 )
         $display( "###- %m: I2C start at time %t. ", $time );
-      
-//       i2c_data_out  = 1'b1;
-//       i2c_clk_out   = 1'b1;
-      
+            
       #tBUF;
-      
-      i2c_data_oe = 1'b1;
-      i2c_clk_oe  = 1'b1;
       
       if( i2c_data != 1'b1 )
         begin
+          if( i2c_clk != 1'b0 )
+            #tHIGH;
+            
+          i2c_clk_out = 1'b0;
+          i2c_clk_oe  = 1'b1;
           #tHD_DAT;
           i2c_data_out = 1'b1;
-        end
+          i2c_data_oe  = 1'b1;
+        end  
         
       if( i2c_clk != 1'b1 )
-        begin
-          i2c_clk_out = 1'b1;
-          #tLOW;
-        end
+        #tLOW;
         
+      i2c_clk_out = 1'b1;
+      i2c_clk_oe  = 1'b1;
       #tSU_STA;  
       i2c_data_out = 1'b0; 
+      i2c_data_oe  = 1'b1;
+      
+      start_r = 1'b0;
          
     end    
   endtask
@@ -174,9 +204,11 @@ module
             
         #tHIGH;
         i2c_clk_out = 1'b0;
-        
+        #tHD_DAT;
+        i2c_data_oe = 1'b1;
+        #tLOW;
+                
         write_byte_r = 1'b0;
-        #1;
                         
       end    
   endtask
@@ -208,6 +240,7 @@ module
   // --------------------------------------------------------------------
   //  read_byte
   task read_byte;
+    input ack;
       begin
           
         #tHD_STA;
@@ -224,9 +257,9 @@ module
         read_bit( 1 );
         read_bit( 0 );
         
-        i2c_data_oe = 1'b1;
         #tHD_DAT;
-        i2c_data_out = 1'b0;
+        i2c_data_out = ack;
+        i2c_data_oe = 1'b1;
         #(tLOW - tHD_DAT);
         i2c_clk_out = 1'b1;
         
@@ -235,6 +268,7 @@ module
           
         #tHIGH;
         i2c_clk_out = 1'b0;
+        #tLOW;
           
       end    
   endtask

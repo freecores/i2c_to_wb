@@ -26,63 +26,37 @@
 //////////////////////////////////////////////////////////////////////
 
 
-`timescale 1ns/10ps
+`include "timescale.v"
 
 
-module the_test(
-                input tb_clk,
-                input tb_rst
-              );
-
-
-  task run_the_test;
-    begin
+module
+  i2c_to_wb_config
+  (
+    input   [7:0]       i2c_byte_in,
+    input               tip_addr_ack,
+    output              i2c_ack_out,
     
-// --------------------------------------------------------------------
-// insert test below
+    input               wb_clk_i,
+    input               wb_rst_i  
+  );
 
-      dut.i2c.start();
-      dut.i2c.write_byte( 8'hf1 );
-      dut.i2c.read_byte(0);
-      dut.i2c.read_byte(0);
-      dut.i2c.read_byte(0);
-      dut.i2c.read_byte(0);
-      dut.i2c.read_byte(0);
-      dut.i2c.read_byte(0);
-      dut.i2c.read_byte(1);
-      
-      dut.i2c.start();
-      dut.i2c.write_byte( 8'h10 );
-      dut.i2c.write_byte( 8'hab );
-      dut.i2c.write_byte( 8'hba );
-      
-      dut.i2c.start();
-      dut.i2c.write_byte( 8'hf0 );
-      dut.i2c.write_byte( 8'hbe );
-      dut.i2c.write_byte( 8'hef );
-      
-      dut.i2c.start();
-      dut.i2c.write_byte( 8'hcb );
-      dut.i2c.read_byte(0);
-      dut.i2c.read_byte(1);
-      
-      dut.i2c.start();
-      dut.i2c.write_byte( 8'hf1 );
-      dut.i2c.read_byte(0);
-      dut.i2c.read_byte(1);
-      
-      dut.i2c.start();
-      dut.i2c.write_byte( 8'hdb );
-      dut.i2c.read_byte(0);
-      dut.i2c.read_byte(1);
-      dut.i2c.stop();
-      
-      
-      repeat(100) @(posedge tb_clk); 
-      
-    end  
-  endtask
-      
-
+  
+  // --------------------------------------------------------------------
+  //  address decoder  
+  reg i2c_addr_ack_out_r;
+  
+  always @(*)
+    casez( i2c_byte_in )
+      8'b1111_000?: i2c_addr_ack_out_r = 1'b0;
+      default:      i2c_addr_ack_out_r = 1'b1;
+    endcase
+    
+    
+  // --------------------------------------------------------------------
+  //  outputs  
+  assign i2c_ack_out = tip_addr_ack ? i2c_addr_ack_out_r : 1'b0;
+//   assign i2c_ack_out = 1'b0;
+  
+    
 endmodule
 
