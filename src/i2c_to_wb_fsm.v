@@ -39,39 +39,39 @@ module
     input         i2c_clk,
     input         i2c_clk_rise,
     input         i2c_clk_fall,
-    
+
     input         i2c_r_w_bit,
     input         i2c_ack_out,
-    output        i2c_ack_done, 
-    
-    output        tip_addr_byte, 
-    output        tip_read_byte, 
-    output        tip_write_byte, 
-    output        tip_wr_ack, 
-    output        tip_rd_ack, 
-    output        tip_addr_ack, 
-    
+    output        i2c_ack_done,
+
+    output        tip_addr_byte,
+    output        tip_read_byte,
+    output        tip_write_byte,
+    output        tip_wr_ack,
+    output        tip_rd_ack,
+    output        tip_addr_ack,
+
     output  [7:0] state_out,
     output        i2c_error,
-    
-    input         wb_clk_i, 
-    input         wb_rst_i  
+
+    input         wb_clk_i,
+    input         wb_rst_i
   );
-  
+
   // --------------------------------------------------------------------
   //  wires
   wire xmt_byte_done;
-  
+
   wire tip_ack;
-  
+
 
   // --------------------------------------------------------------------
   //  start & stop & ack
-  
+
   wire start_detected = i2c_data_fall & i2c_clk;
   wire stop_detected  = i2c_data_rise & i2c_clk;
-  
-  
+
+
   // --------------------------------------------------------------------
   //  state machine
 
@@ -86,7 +86,7 @@ module
 
   reg [7:0] state;
   reg [7:0] next_state;
-  
+
   always @(posedge wb_clk_i or posedge wb_rst_i)
     if(wb_rst_i)
       state <= STATE_IDLE;
@@ -98,18 +98,18 @@ module
       STATE_IDLE:       if( start_detected )
                           next_state = STATE_ADDR_BYTE;
                         else
-                          next_state = STATE_IDLE;                              
-                            
+                          next_state = STATE_IDLE;
+
       STATE_ADDR_BYTE:  if( xmt_byte_done )
                           next_state = STATE_ADDR_ACK;
-                        else if( start_detected | stop_detected )
+                        else if( stop_detected )
                           next_state = STATE_ERROR;
-                        else  
+                        else
                           next_state = STATE_ADDR_BYTE;
-                          
+
       STATE_ADDR_ACK:   if(i2c_ack_out)
                           next_state = STATE_IDLE;
-                        else    
+                        else
                           if( i2c_ack_done )
                             if( i2c_r_w_bit )
                               next_state = STATE_READ;
@@ -119,7 +119,7 @@ module
                             next_state = STATE_ERROR;
                           else
                             next_state = STATE_ADDR_ACK;
-                            
+
       STATE_WRITE:      if( xmt_byte_done )
                           next_state = STATE_WR_ACK;
                         else if( start_detected )
@@ -128,14 +128,14 @@ module
                           next_state = STATE_IDLE;
                         else
                           next_state = STATE_WRITE;
-                            
+
       STATE_WR_ACK:     if( i2c_ack_done )
-                          next_state = STATE_WRITE;  
+                          next_state = STATE_WRITE;
                         else if( start_detected | stop_detected )
                           next_state = STATE_ERROR;
                         else
                           next_state = STATE_WR_ACK;
-                            
+
       STATE_READ:       if( xmt_byte_done )
                           next_state = STATE_RD_ACK;
                         else if( start_detected )
@@ -144,43 +144,48 @@ module
                           next_state = STATE_IDLE;
                         else
                           next_state = STATE_READ;
-                            
+
       STATE_RD_ACK:     if( i2c_ack_done )
                           if(i2c_data)
-                            next_state = STATE_IDLE;  
+                            next_state = STATE_IDLE;
                           else
-                            next_state = STATE_READ;  
+                            next_state = STATE_READ;
                         else if( start_detected | stop_detected )
                           next_state = STATE_ERROR;
                         else
                           next_state = STATE_RD_ACK;
-                            
+
       STATE_ERROR:      next_state = STATE_IDLE;
-                        
+
       default:          next_state = STATE_ERROR;
     endcase
-    
-    
+
+
   // --------------------------------------------------------------------
-  //  bit counter 
+  //  bit counter
   reg [3:0] bit_count;
-  
-  assign  xmt_byte_done = (bit_count == 4'h7) & i2c_clk_rise; 
+
+  assign  xmt_byte_done = (bit_count == 4'h7) & i2c_clk_rise;
   assign  tip_ack       = (bit_count == 4'h8);
   assign  i2c_ack_done  = tip_ack & i2c_clk_rise;
-    
+
   always @(posedge wb_clk_i)
     if( wb_rst_i | i2c_ack_done | start_detected )
       bit_count <= 4'hf;
     else if( i2c_clk_fall )
       bit_count <= bit_count + 1;
-  
-    
-// --------------------------------------------------------------------
-//  outputs
-    
+
+
+  // --------------------------------------------------------------------
+  //  debug
+  wire i2c_start_error = (state == STATE_ADDR_BYTE) & start_detected;
+
+
+  // --------------------------------------------------------------------
+  //  outputs
+
   assign state_out = state;
-    
+
   assign  tip_addr_byte   = (state == STATE_ADDR_BYTE);
   assign  tip_addr_ack    = (state == STATE_ADDR_ACK);
   assign  tip_read_byte   = (state == STATE_READ);
@@ -188,9 +193,8 @@ module
   assign  tip_wr_ack      = tip_addr_ack                | (state == STATE_WR_ACK);
   assign  tip_rd_ack      = (state == STATE_RD_ACK);
 
-  assign i2c_error = (state == STATE_ERROR);
-  
+  assign i2c_error = (state == STATE_ERROR) | i2c_start_error;
+
 endmodule
-  
-  
+
 
